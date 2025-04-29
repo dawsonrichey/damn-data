@@ -16,69 +16,58 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
         }
-        .kanban-column {
-            min-height: 300px;
-            background-color: #e5e7eb;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            transition: background-color 0.2s ease-in-out;
-        }
-        .kanban-column.drag-over {
-            background-color: #d1d5db;
-        }
+        .kanban-column { min-height: 300px; background-color: #e5e7eb; border-radius: 0.5rem; padding: 1rem; transition: background-color 0.2s ease-in-out; }
+        .kanban-column.drag-over { background-color: #d1d5db; }
         .task-card {
-            background-color: white;
-            padding: 0.75rem 1rem;
-            border-radius: 0.375rem;
-            margin-bottom: 0.75rem;
-            cursor: pointer; /* Change cursor to pointer for clickable items */
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            background-color: white; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.75rem;
+            cursor: pointer; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
             transition: box-shadow 0.2s ease-in-out, opacity 0.2s ease-in-out, border-color 0.2s ease-in-out;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            border: 2px solid transparent; /* Add transparent border for editing highlight */
+            display: flex; flex-direction: column; gap: 0.5rem; border: 2px solid transparent;
         }
-        .task-card.editing {
-             border-color: #3b82f6; /* Blue border when editing */
-             cursor: default; /* Change cursor back when editing */
-        }
-         .task-description {
-            word-break: break-word;
-         }
-        .task-card:not(.editing):active { /* Only apply active style when not editing */
-            cursor: grabbing;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        .task-card.dragging {
-            opacity: 0.5;
-        }
-        .task-hidden {
-            display: none !important;
-        }
-        .drop-placeholder {
-            background-color: #9ca3af;
-            min-height: 50px;
-            border-radius: 0.375rem;
-            margin-bottom: 0.75rem;
-            opacity: 0.5;
-        }
-        #confetti-canvas {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;
-        }
+        .task-card.editing { border-color: #3b82f6; cursor: default; }
+        .task-description { word-break: break-word; }
+        .task-card:not(.editing):active { cursor: grabbing; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .task-card.dragging { opacity: 0.5; }
+        .task-hidden { display: none !important; }
+        .drop-placeholder { background-color: #9ca3af; min-height: 50px; border-radius: 0.375rem; margin-bottom: 0.75rem; opacity: 0.5; }
+        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; }
         #importFile { display: none; }
         .tags-container { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.5rem; }
         .tag-badge {
             background-color: #dbeafe; color: #1e40af; padding: 0.125rem 0.5rem; border-radius: 9999px;
             font-size: 0.75rem; font-weight: 500; white-space: nowrap;
         }
-        #storageChartContainer {
-            max-width: 250px;
-            margin: 1rem auto 0;
+        #storageChartContainer { max-width: 250px; margin: 1rem auto 0; }
+        #cancelEditBtn { display: none; }
+
+        /* Tag List Styles */
+        #tagListContainer {
+            border-top: 1px solid #e5e7eb; /* Separator line */
+            padding-top: 1rem;
+            margin-top: 1rem;
         }
-        /* Hide cancel button by default */
-        #cancelEditBtn {
-            display: none;
+        .tag-list-item {
+            display: inline-flex; /* Use inline-flex for better alignment */
+            align-items: center;
+            background-color: #e0e7ff; /* Light indigo */
+            color: #3730a3; /* Darker indigo text */
+            padding: 0.25rem 0.75rem; /* 4px 12px */
+            border-radius: 9999px;
+            font-size: 0.875rem; /* 14px */
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            white-space: nowrap;
+        }
+        .tag-list-count {
+            margin-left: 0.5rem;
+            font-size: 0.75rem; /* 12px */
+            font-weight: 600;
+            background-color: #c7d2fe; /* Slightly darker indigo */
+            color: #3730a3;
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.25rem;
+            min-width: 1.25rem; /* Ensure count badge has min width */
+            text-align: center;
         }
     </style>
 </head>
@@ -92,15 +81,12 @@
                 <h2 id="formTitle" class="text-xl font-semibold mb-3 text-gray-700">Add New Task</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                     <input type="text" id="newTaskInput" placeholder="Enter task description..." class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <input type="text" id="newTaskTags" placeholder="Tags (comma-separated)..." class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="newTaskTags" placeholder="Tags (comma-separated)..." list="tagSuggestions" class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <datalist id="tagSuggestions"></datalist>
                 </div>
                  <div class="flex flex-col sm:flex-row gap-3">
-                     <button id="addOrUpdateTaskBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out flex-grow sm:flex-grow-0">
-                        Add Task
-                    </button>
-                    <button id="cancelEditBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out flex-grow sm:flex-grow-0">
-                        Cancel Edit
-                    </button>
+                     <button id="addOrUpdateTaskBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out flex-grow sm:flex-grow-0">Add Task</button>
+                    <button id="cancelEditBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out flex-grow sm:flex-grow-0">Cancel Edit</button>
                  </div>
             </div>
 
@@ -110,38 +96,29 @@
                     <input type="text" id="filterTagInput" placeholder="Enter tag to filter..." class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                  <div class="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:gap-3">
-                     <button id="exportTasksBtn" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out">
-                        Download Tasks (JSON)
-                    </button>
-                     <button id="importTasksBtn" class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out">
-                        Upload Tasks (JSON)
-                    </button>
+                     <button id="exportTasksBtn" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition">Download Tasks (JSON)</button>
+                     <button id="importTasksBtn" class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition">Upload Tasks (JSON)</button>
                      <input type="file" id="importFile" accept=".json">
-                     <button id="clearStorageBtn" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out sm:ml-auto">
-                        Clear All Tasks
-                    </button>
+                     <button id="clearStorageBtn" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md transition sm:ml-auto">Clear All Tasks</button>
                 </div>
                  <div id="storageChartContainer">
                      <h3 class="text-center text-sm font-medium text-gray-600 mb-2">Estimated Local Storage Usage (5MB Limit)</h3>
                      <canvas id="storageUsageChart"></canvas>
+                 </div>
+                 <div id="tagListContainer">
+                     <h3 class="text-center text-sm font-medium text-gray-600 mb-2">Current Tags (by frequency)</h3>
+                     <div id="tagList" class="flex flex-wrap justify-center">
+                         <span class="text-gray-500 text-sm">No tags found yet.</span>
+                     </div>
                  </div>
             </div>
              <div id="messageArea" class="text-sm text-gray-600 min-h-[1.25rem]"></div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div id="todo" class="kanban-column" data-column-id="todo">
-                <h2 class="text-lg font-semibold mb-4 text-center text-gray-700 border-b pb-2 border-gray-400">To Do</h2>
-                <div class="tasks-container space-y-3"></div>
-            </div>
-            <div id="inprogress" class="kanban-column" data-column-id="inprogress">
-                <h2 class="text-lg font-semibold mb-4 text-center text-gray-700 border-b pb-2 border-gray-400">In Progress</h2>
-                <div class="tasks-container space-y-3"></div>
-            </div>
-            <div id="done" class="kanban-column" data-column-id="done">
-                <h2 class="text-lg font-semibold mb-4 text-center text-gray-700 border-b pb-2 border-gray-400">Done</h2>
-                <div class="tasks-container space-y-3"></div>
-            </div>
+            <div id="todo" class="kanban-column" data-column-id="todo"><h2 class="text-lg font-semibold mb-4 text-center text-gray-700 border-b pb-2 border-gray-400">To Do</h2><div class="tasks-container space-y-3"></div></div>
+            <div id="inprogress" class="kanban-column" data-column-id="inprogress"><h2 class="text-lg font-semibold mb-4 text-center text-gray-700 border-b pb-2 border-gray-400">In Progress</h2><div class="tasks-container space-y-3"></div></div>
+            <div id="done" class="kanban-column" data-column-id="done"><h2 class="text-lg font-semibold mb-4 text-center text-gray-700 border-b pb-2 border-gray-400">Done</h2><div class="tasks-container space-y-3"></div></div>
         </div>
     </div>
 
@@ -150,11 +127,13 @@
     <script>
         // --- DOM Elements ---
         const columns = document.querySelectorAll('.kanban-column');
-        const addOrUpdateTaskBtn = document.getElementById('addOrUpdateTaskBtn'); // Renamed button
-        const cancelEditBtn = document.getElementById('cancelEditBtn'); // Cancel button
-        const formTitle = document.getElementById('formTitle'); // Form title element
+        const addOrUpdateTaskBtn = document.getElementById('addOrUpdateTaskBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const formTitle = document.getElementById('formTitle');
         const newTaskInput = document.getElementById('newTaskInput');
         const newTaskTagsInput = document.getElementById('newTaskTags');
+        const tagSuggestionsDatalist = document.getElementById('tagSuggestions'); // Datalist element
+        const tagListDiv = document.getElementById('tagList'); // Div to display tag counts
         const clearStorageBtn = document.getElementById('clearStorageBtn');
         const exportTasksBtn = document.getElementById('exportTasksBtn');
         const importTasksBtn = document.getElementById('importTasksBtn');
@@ -167,7 +146,7 @@
         const LOCAL_STORAGE_LIMIT_BYTES = 5 * 1024 * 1024;
 
         // --- State Variables ---
-        let editingTaskId = null; // Track the ID of the task being edited
+        let editingTaskId = null;
 
         // --- Chart Instance ---
         let storageChart = null;
@@ -179,110 +158,127 @@
         let taskCounter = 1;
 
         // --- Utility Functions ---
-        function showMessage(msg, isError = false) { /* ... (same as before) ... */
+        function showMessage(msg, isError = false) { /* ... (same) ... */
             messageArea.textContent = msg;
             messageArea.className = `text-sm min-h-[1.25rem] ${isError ? 'text-red-600' : 'text-green-600'}`;
-            setTimeout(() => {
-                if (messageArea.textContent === msg) {
-                   messageArea.textContent = '';
-                   messageArea.className = 'text-sm text-gray-600 min-h-[1.25rem]';
-                }
-            }, 5000);
+            setTimeout(() => { if (messageArea.textContent === msg) { messageArea.textContent = ''; messageArea.className = 'text-sm text-gray-600 min-h-[1.25rem]'; } }, 5000);
         }
-        function formatBytes(bytes, decimals = 2) { /* ... (same as before) ... */
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const dm = decimals < 0 ? 0 : decimals;
-            const sizes = ['Bytes', 'KB', 'MB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        function formatBytes(bytes, decimals = 2) { /* ... (same) ... */
+            if (bytes === 0) return '0 Bytes'; const k = 1024; const dm = decimals < 0 ? 0 : decimals; const sizes = ['Bytes', 'KB', 'MB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
          }
 
         // --- Filtering Function ---
-        function filterTasksByTag() { /* ... (same as before) ... */
+        function filterTasksByTag() { /* ... (same) ... */
             const filterTag = filterTagInput.value.trim().toLowerCase();
             const allTaskCards = document.querySelectorAll('.task-card');
-            allTaskCards.forEach(card => {
-                // Don't hide the card currently being edited
-                if (card.dataset.taskId === editingTaskId) {
-                    card.classList.remove('task-hidden');
-                    return;
-                }
-                let hasTag = false;
-                if (!filterTag) { hasTag = true; }
-                else {
-                    const tagBadges = card.querySelectorAll('.tag-badge');
-                    tagBadges.forEach(badge => {
-                        if (badge.textContent.toLowerCase().includes(filterTag)) hasTag = true;
-                    });
-                }
-                card.classList.toggle('task-hidden', !hasTag);
-            });
+            allTaskCards.forEach(card => { if (card.dataset.taskId === editingTaskId) { card.classList.remove('task-hidden'); return; } let hasTag = false; if (!filterTag) { hasTag = true; } else { const tagBadges = card.querySelectorAll('.tag-badge'); tagBadges.forEach(badge => { if (badge.textContent.toLowerCase().includes(filterTag)) hasTag = true; }); } card.classList.toggle('task-hidden', !hasTag); });
          }
 
         // --- Chart Functions ---
-        function calculateLocalStorageUsage() { /* ... (same as before) ... */
-            const savedDataString = localStorage.getItem(STORAGE_KEY);
-            let usedBytes = 0;
-            if (savedDataString) { usedBytes = new Blob([savedDataString]).size; }
-            const remainingBytes = Math.max(0, LOCAL_STORAGE_LIMIT_BYTES - usedBytes);
-            return { usedBytes, remainingBytes };
-         }
-        function updateStorageChart() { /* ... (same as before) ... */
-            if (!storageChartCanvas) return;
-            const ctx = storageChartCanvas.getContext('2d');
-            const { usedBytes, remainingBytes } = calculateLocalStorageUsage();
-            const chartData = {
-                labels: [`Used: ${formatBytes(usedBytes)}`, `Est. Remaining: ${formatBytes(remainingBytes)}`],
-                datasets: [{ label: 'LocalStorage Usage', data: [usedBytes, remainingBytes], backgroundColor: ['rgb(239, 68, 68)', 'rgb(34, 197, 94)'], hoverOffset: 4 }]
-            };
-            if (storageChart) { storageChart.data = chartData; storageChart.update(); }
-            else {
-                storageChart = new Chart(ctx, { type: 'pie', data: chartData, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }, tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += formatBytes(context.parsed); } return label; } } } } } });
+        function calculateLocalStorageUsage() { /* ... (same) ... */
+            const savedDataString = localStorage.getItem(STORAGE_KEY); let usedBytes = 0; if (savedDataString) { usedBytes = new Blob([savedDataString]).size; } const remainingBytes = Math.max(0, LOCAL_STORAGE_LIMIT_BYTES - usedBytes); return { usedBytes, remainingBytes };
+        }
+        function updateStorageChart() { /* ... (same) ... */
+            if (!storageChartCanvas) return; const ctx = storageChartCanvas.getContext('2d'); const { usedBytes, remainingBytes } = calculateLocalStorageUsage(); const chartData = { labels: [`Used: ${formatBytes(usedBytes)}`, `Est. Remaining: ${formatBytes(remainingBytes)}`], datasets: [{ label: 'LocalStorage Usage', data: [usedBytes, remainingBytes], backgroundColor: ['rgb(239, 68, 68)', 'rgb(34, 197, 94)'], hoverOffset: 4 }] }; if (storageChart) { storageChart.data = chartData; storageChart.update(); } else { storageChart = new Chart(ctx, { type: 'pie', data: chartData, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }, tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += formatBytes(context.parsed); } return label; } } } } } }); }
+        }
+
+        // --- Tag Calculation and Display Functions ---
+
+        /**
+         * Calculates the frequency of each tag used across all tasks.
+         * @returns {Array<{tag: string, count: number}>} Sorted array of tag objects.
+         */
+        function calculateTagCounts() {
+            const tagCounts = {};
+            const allTaskCards = document.querySelectorAll('.task-card');
+
+            allTaskCards.forEach(card => {
+                const tagsContainer = card.querySelector('.tags-container');
+                if (tagsContainer) {
+                    const tags = Array.from(tagsContainer.querySelectorAll('.tag-badge'))
+                                      .map(badge => badge.textContent.toLowerCase()); // Use lowercase for consistent counting
+                    tags.forEach(tag => {
+                        if (tag) { // Ensure tag is not empty
+                           tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                        }
+                    });
+                }
+            });
+
+            // Convert to array and sort by count descending
+            const sortedTags = Object.entries(tagCounts)
+                                   .map(([tag, count]) => ({ tag, count }))
+                                   .sort((a, b) => b.count - a.count); // Sort descending by count
+
+            return sortedTags;
+        }
+
+        /** Updates the tag list display area */
+        function updateTagListDisplay() {
+            const sortedTags = calculateTagCounts();
+            tagListDiv.innerHTML = ''; // Clear previous list
+
+            if (sortedTags.length === 0) {
+                tagListDiv.innerHTML = '<span class="text-gray-500 text-sm">No tags found yet.</span>';
+                return;
             }
-         }
+
+            sortedTags.forEach(({ tag, count }) => {
+                const tagElement = document.createElement('div');
+                tagElement.className = 'tag-list-item';
+
+                const tagName = document.createElement('span');
+                tagName.textContent = tag; // Display original case if needed, but counted lowercase
+
+                const tagCount = document.createElement('span');
+                tagCount.className = 'tag-list-count';
+                tagCount.textContent = count;
+
+                tagElement.appendChild(tagName);
+                tagElement.appendChild(tagCount);
+                tagListDiv.appendChild(tagElement);
+            });
+        }
+
+        /** Updates the datalist for tag input suggestions */
+        function updateTagAutocomplete() {
+            const sortedTags = calculateTagCounts();
+            tagSuggestionsDatalist.innerHTML = ''; // Clear previous suggestions
+
+            sortedTags.forEach(({ tag }) => {
+                const option = document.createElement('option');
+                option.value = tag;
+                tagSuggestionsDatalist.appendChild(option);
+            });
+        }
+
+        /** Central function to update all dynamic tag-related UI */
+        function refreshTagUI() {
+            updateTagListDisplay();
+            updateTagAutocomplete();
+        }
+
 
         // --- LocalStorage & Data Functions ---
-        function getCurrentTasksData() { /* ... (same as before) ... */
-            const tasksData = { todo: [], inprogress: [], done: [] };
-             let maxIdNum = 0;
-             columns.forEach(column => {
-                const columnId = column.dataset.columnId;
-                const tasksContainer = column.querySelector('.tasks-container');
-                const taskCards = tasksContainer.querySelectorAll('.task-card');
-                taskCards.forEach(card => {
-                    const taskId = card.dataset.taskId;
-                    const descriptionElement = card.querySelector('.task-description');
-                    const tagsContainer = card.querySelector('.tags-container');
-                    const taskText = descriptionElement ? descriptionElement.textContent : '';
-                    let tags = [];
-                    if (tagsContainer) { tags = Array.from(tagsContainer.querySelectorAll('.tag-badge')).map(badge => badge.textContent); }
-                    tasksData[columnId].push({ id: taskId, text: taskText, tags: tags });
-                    const idNum = parseInt(taskId.split('-')[1]);
-                    if (!isNaN(idNum) && idNum > maxIdNum) maxIdNum = idNum;
-                });
-             });
-             tasksData.nextTaskId = maxIdNum + 1;
-             return tasksData;
-         }
-        function saveTasksToLocalStorage() { /* ... (same as before, calls update chart) ... */
+        function getCurrentTasksData() { /* ... (same) ... */
+            const tasksData = { todo: [], inprogress: [], done: [] }; let maxIdNum = 0; columns.forEach(column => { const columnId = column.dataset.columnId; const tasksContainer = column.querySelector('.tasks-container'); const taskCards = tasksContainer.querySelectorAll('.task-card'); taskCards.forEach(card => { const taskId = card.dataset.taskId; const descriptionElement = card.querySelector('.task-description'); const tagsContainer = card.querySelector('.tags-container'); const taskText = descriptionElement ? descriptionElement.textContent : ''; let tags = []; if (tagsContainer) { tags = Array.from(tagsContainer.querySelectorAll('.tag-badge')).map(badge => badge.textContent); } tasksData[columnId].push({ id: taskId, text: taskText, tags: tags }); const idNum = parseInt(taskId.split('-')[1]); if (!isNaN(idNum) && idNum > maxIdNum) maxIdNum = idNum; }); }); tasksData.nextTaskId = maxIdNum + 1; return tasksData;
+        }
+        function saveTasksToLocalStorage() { /* ... (calls update chart) ... */
             const tasksData = getCurrentTasksData();
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(tasksData));
                 updateStorageChart();
-            } catch (error) {
-                console.error("Error saving tasks to localStorage:", error);
-                showMessage("Could not save tasks. Storage might be full or disabled.", true);
-            }
+                refreshTagUI(); // Refresh tags after saving
+            } catch (error) { console.error("Error saving tasks:", error); showMessage("Could not save tasks.", true); }
          }
-        function loadTasksFromLocalStorage() { /* ... (same as before, calls update chart & filter) ... */
+        function loadTasksFromLocalStorage() { /* ... (calls update chart, filter, and tags) ... */
             const savedData = localStorage.getItem(STORAGE_KEY);
             clearBoardUI();
             if (!savedData) { taskCounter = 1; }
             else {
                 try {
                     const tasksData = JSON.parse(savedData);
-                    if (typeof tasksData !== 'object' || tasksData === null || !Array.isArray(tasksData.todo) || !Array.isArray(tasksData.inprogress) || !Array.isArray(tasksData.done)) { throw new Error("Invalid data structure in localStorage."); }
+                    if (typeof tasksData !== 'object' || tasksData === null || !Array.isArray(tasksData.todo) || !Array.isArray(tasksData.inprogress) || !Array.isArray(tasksData.done)) { throw new Error("Invalid data structure."); }
                     Object.keys(tasksData).forEach(columnId => {
                         if (columnId === 'nextTaskId') return;
                         const columnElement = document.getElementById(columnId);
@@ -290,306 +286,117 @@
                             const tasksContainer = columnElement.querySelector('.tasks-container');
                             tasksData[columnId].forEach(task => {
                                 if (task && typeof task.id === 'string' && typeof task.text === 'string' && Array.isArray(task.tags)) {
-                                    const taskCard = createTaskCard(task.text, task.id, task.tags);
-                                    tasksContainer.appendChild(taskCard);
-                                } else { console.warn("Skipping invalid task object:", task); }
+                                    const taskCard = createTaskCard(task.text, task.id, task.tags); tasksContainer.appendChild(taskCard);
+                                } else { console.warn("Skipping invalid task:", task); }
                             });
-                        } else if(columnElement) { console.warn(`Expected array for column ${columnId}, but found:`, tasksData[columnId]); }
+                        } else if(columnElement) { console.warn(`Expected array for ${columnId}:`, tasksData[columnId]); }
                     });
-                    taskCounter = parseInt(tasksData.nextTaskId) || 1;
-                    if (taskCounter < 1) taskCounter = 1;
-                } catch (error) {
-                    console.error("Error loading or parsing tasks from localStorage:", error);
-                    showMessage("Could not load saved tasks. Data might be corrupted. Clearing storage.", true);
-                    localStorage.removeItem(STORAGE_KEY); taskCounter = 1; clearBoardUI();
-                }
+                    taskCounter = parseInt(tasksData.nextTaskId) || 1; if (taskCounter < 1) taskCounter = 1;
+                } catch (error) { console.error("Error loading tasks:", error); showMessage("Could not load tasks. Clearing storage.", true); localStorage.removeItem(STORAGE_KEY); taskCounter = 1; clearBoardUI(); }
             }
             updateStorageChart();
+            refreshTagUI(); // Refresh tags after loading
             filterTasksByTag();
          }
-        function clearBoardUI() { /* ... (same as before) ... */
+        function clearBoardUI() { /* ... (same) ... */
             columns.forEach(column => { column.querySelector('.tasks-container').innerHTML = ''; });
          }
-        function handleClearStorage() { /* ... (same as before, calls update chart & filter) ... */
-            if (confirm("Are you sure you want to delete ALL tasks? This action cannot be undone.")) {
+        function handleClearStorage() { /* ... (calls update chart, filter, and tags) ... */
+            if (confirm("Delete ALL tasks? Cannot be undone.")) {
                 try {
                     localStorage.removeItem(STORAGE_KEY); clearBoardUI(); taskCounter = 1;
-                    filterTagInput.value = ''; filterTasksByTag(); updateStorageChart();
-                    showMessage("All tasks cleared successfully."); console.log("Tasks cleared from localStorage and board.");
-                } catch (error) { console.error("Error clearing tasks from localStorage:", error); showMessage("Could not clear tasks. Please check browser permissions.", true); }
-            } else { console.log("Clear storage cancelled by user."); }
+                    filterTagInput.value = ''; filterTasksByTag(); updateStorageChart(); refreshTagUI();
+                    showMessage("All tasks cleared."); console.log("Tasks cleared.");
+                } catch (error) { console.error("Error clearing tasks:", error); showMessage("Could not clear tasks.", true); }
+            } else { console.log("Clear cancelled."); }
          }
 
         // --- Import/Export Functions ---
-        function handleExportTasks() { /* ... (same as before) ... */
-            try {
-                const tasksData = getCurrentTasksData(); const jsonString = JSON.stringify(tasksData, null, 2);
-                const blob = new Blob([jsonString], { type: 'application/json' }); const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = 'kanban-tasks.json';
-                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-                showMessage("Tasks exported successfully.");
-            } catch (error) { console.error("Error exporting tasks:", error); showMessage("Failed to export tasks.", true); }
-         }
-        function handleFileImport(event) { /* ... (same as before, calls load which updates chart & filter) ... */
-            const file = event.target.files[0]; if (!file) return;
-            if (file.type !== 'application/json') { showMessage(`Invalid file type: ${file.type}. Please upload a .json file.`, true); event.target.value = null; return; }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const fileContent = e.target.result; const importedData = JSON.parse(fileContent);
-                    if (typeof importedData !== 'object' || importedData === null || !Array.isArray(importedData.todo) || !Array.isArray(importedData.inprogress) || !Array.isArray(importedData.done) || typeof importedData.nextTaskId !== 'number' || importedData.nextTaskId < 1) { throw new Error("Invalid JSON structure for Kanban tasks."); }
-                    const allTasksValid = ['todo', 'inprogress', 'done'].every(col => importedData[col].every(task => task && typeof task.id === 'string' && typeof task.text === 'string' && Array.isArray(task.tags)));
-                    if (!allTasksValid) { throw new Error("Invalid task format within the JSON file."); }
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(importedData));
-                    loadTasksFromLocalStorage(); showMessage("Tasks imported successfully!");
-                } catch (error) { console.error("Error processing imported file:", error); showMessage(`Failed to import tasks: ${error.message}`, true); }
-                finally { event.target.value = null; }
-            };
-            reader.onerror = function(e) { console.error("Error reading file:", e); showMessage("Error reading the selected file.", true); event.target.value = null; };
-            reader.readAsText(file);
-         }
+        function handleExportTasks() { /* ... (same) ... */
+             try { const tasksData = getCurrentTasksData(); const jsonString = JSON.stringify(tasksData, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'kanban-tasks.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); showMessage("Tasks exported."); } catch (error) { console.error("Error exporting:", error); showMessage("Failed to export.", true); }
+        }
+        function handleFileImport(event) { /* ... (calls load which updates chart, filter, and tags) ... */
+            const file = event.target.files[0]; if (!file) return; if (file.type !== 'application/json') { showMessage(`Invalid file type. Use .json.`, true); event.target.value = null; return; } const reader = new FileReader(); reader.onload = function(e) { try { const importedData = JSON.parse(e.target.result); if (typeof importedData !== 'object' || importedData === null || !Array.isArray(importedData.todo) || !Array.isArray(importedData.inprogress) || !Array.isArray(importedData.done) || typeof importedData.nextTaskId !== 'number' || importedData.nextTaskId < 1) { throw new Error("Invalid JSON structure."); } const allTasksValid = ['todo', 'inprogress', 'done'].every(col => importedData[col].every(task => task && typeof task.id === 'string' && typeof task.text === 'string' && Array.isArray(task.tags))); if (!allTasksValid) { throw new Error("Invalid task format in JSON."); } localStorage.setItem(STORAGE_KEY, JSON.stringify(importedData)); loadTasksFromLocalStorage(); showMessage("Tasks imported!"); } catch (error) { console.error("Error importing:", error); showMessage(`Import failed: ${error.message}`, true); } finally { event.target.value = null; } }; reader.onerror = function(e) { console.error("File read error:", e); showMessage("Error reading file.", true); event.target.value = null; }; reader.readAsText(file);
+        }
 
         // --- Editing Functions ---
-
-        /** Enters edit mode for a specific task */
-        function enterEditMode(taskCard) {
-            // If already editing another task, cancel that first
-            if (editingTaskId && editingTaskId !== taskCard.dataset.taskId) {
-                cancelEdit();
-            }
-
+        function enterEditMode(taskCard) { /* ... (same) ... */
+            if (editingTaskId && editingTaskId !== taskCard.dataset.taskId) { cancelEdit(); }
             editingTaskId = taskCard.dataset.taskId;
-
-            // Get data from card
-            const descriptionElement = taskCard.querySelector('.task-description');
-            const tagsContainer = taskCard.querySelector('.tags-container');
-            const taskText = descriptionElement ? descriptionElement.textContent : '';
-            let tags = [];
-            if (tagsContainer) {
-                tags = Array.from(tagsContainer.querySelectorAll('.tag-badge')).map(badge => badge.textContent);
-            }
-
-            // Populate form
-            newTaskInput.value = taskText;
-            newTaskTagsInput.value = tags.join(', '); // Join tags back into comma-separated string
-
-            // Update UI
-            formTitle.textContent = 'Edit Task';
-            addOrUpdateTaskBtn.textContent = 'Update Task';
-            addOrUpdateTaskBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-            addOrUpdateTaskBtn.classList.add('bg-yellow-500', 'hover:bg-yellow-600'); // Change button color
-            cancelEditBtn.style.display = 'inline-block'; // Show cancel button
-
-            // Highlight the card being edited
-            taskCard.classList.add('editing');
-            taskCard.setAttribute('draggable', 'false'); // Disable dragging while editing
-
-            // Scroll form into view if needed
-            formTitle.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-             // Re-apply filter to ensure other cards are hidden/shown correctly
-             filterTasksByTag();
+            const descriptionElement = taskCard.querySelector('.task-description'); const tagsContainer = taskCard.querySelector('.tags-container');
+            const taskText = descriptionElement ? descriptionElement.textContent : ''; let tags = []; if (tagsContainer) { tags = Array.from(tagsContainer.querySelectorAll('.tag-badge')).map(badge => badge.textContent); }
+            newTaskInput.value = taskText; newTaskTagsInput.value = tags.join(', ');
+            formTitle.textContent = 'Edit Task'; addOrUpdateTaskBtn.textContent = 'Update Task';
+            addOrUpdateTaskBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700'); addOrUpdateTaskBtn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+            cancelEditBtn.style.display = 'inline-block';
+            taskCard.classList.add('editing'); taskCard.setAttribute('draggable', 'false');
+            formTitle.scrollIntoView({ behavior: 'smooth', block: 'center' }); filterTasksByTag();
         }
-
-        /** Cancels the current edit mode */
-        function cancelEdit() {
-            if (!editingTaskId) return; // Not editing anything
-
-            // Remove highlight from the previously edited card
+        function cancelEdit() { /* ... (same) ... */
+            if (!editingTaskId) return;
             const currentlyEditingCard = document.querySelector(`.task-card[data-task-id="${editingTaskId}"]`);
-            if (currentlyEditingCard) {
-                currentlyEditingCard.classList.remove('editing');
-                currentlyEditingCard.setAttribute('draggable', 'true'); // Re-enable dragging
-            }
-
-            editingTaskId = null; // Clear editing state
-
-            // Reset form
-            newTaskInput.value = '';
-            newTaskTagsInput.value = '';
-            formTitle.textContent = 'Add New Task';
-            addOrUpdateTaskBtn.textContent = 'Add Task';
-            addOrUpdateTaskBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
-            addOrUpdateTaskBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
-            cancelEditBtn.style.display = 'none'; // Hide cancel button
-
-             // Re-apply filter
-             filterTasksByTag();
+            if (currentlyEditingCard) { currentlyEditingCard.classList.remove('editing'); currentlyEditingCard.setAttribute('draggable', 'true'); }
+            editingTaskId = null;
+            newTaskInput.value = ''; newTaskTagsInput.value = '';
+            formTitle.textContent = 'Add New Task'; addOrUpdateTaskBtn.textContent = 'Add Task';
+            addOrUpdateTaskBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600'); addOrUpdateTaskBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            cancelEditBtn.style.display = 'none'; filterTasksByTag();
         }
-
-        /** Handles clicks on task cards to potentially enter edit mode */
-        function handleTaskClick(event) {
-            // Ensure the click is directly on the card or its children, but not while dragging is starting
-            const taskCard = event.target.closest('.task-card');
-
-            // Do nothing if the card is currently being dragged or already being edited
-            if (!taskCard || taskCard.classList.contains('dragging') || taskCard.classList.contains('editing')) {
-                return;
-            }
-
-            enterEditMode(taskCard);
+        function handleTaskClick(event) { /* ... (same) ... */
+            const taskCard = event.target.closest('.task-card'); if (!taskCard || taskCard.classList.contains('dragging') || taskCard.classList.contains('editing')) { return; } enterEditMode(taskCard);
         }
 
         // --- Core Task Functions ---
-
-        /** Creates a new task card element, including tags and click listener */
-        function createTaskCard(text, id, tags = []) {
-            const card = document.createElement('div');
-            card.className = 'task-card';
-            card.setAttribute('draggable', 'true'); card.setAttribute('data-task-id', id);
-
-            const description = document.createElement('div');
-            description.className = 'task-description'; description.textContent = text;
-            card.appendChild(description);
-
-            if (tags && tags.length > 0) {
-                const tagsContainer = document.createElement('div');
-                tagsContainer.className = 'tags-container';
-                tags.forEach(tagText => {
-                    if (tagText.trim()) {
-                        const tagBadge = document.createElement('span');
-                        tagBadge.className = 'tag-badge'; tagBadge.textContent = tagText.trim();
-                        tagsContainer.appendChild(tagBadge);
-                    }
-                });
-                if (tagsContainer.hasChildNodes()) card.appendChild(tagsContainer);
-            }
-
-            card.addEventListener('dragstart', handleDragStart);
-            card.addEventListener('dragend', handleDragEnd);
-            card.addEventListener('click', handleTaskClick); // Add click listener for editing
-
-            return card;
+        function createTaskCard(text, id, tags = []) { /* ... (same, adds click listener) ... */
+            const card = document.createElement('div'); card.className = 'task-card'; card.setAttribute('draggable', 'true'); card.setAttribute('data-task-id', id); const description = document.createElement('div'); description.className = 'task-description'; description.textContent = text; card.appendChild(description); if (tags && tags.length > 0) { const tagsContainer = document.createElement('div'); tagsContainer.className = 'tags-container'; tags.forEach(tagText => { if (tagText.trim()) { const tagBadge = document.createElement('span'); tagBadge.className = 'tag-badge'; tagBadge.textContent = tagText.trim(); tagsContainer.appendChild(tagBadge); } }); if (tagsContainer.hasChildNodes()) card.appendChild(tagsContainer); } card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd); card.addEventListener('click', handleTaskClick); return card;
         }
-
-        /** Adds a new task OR updates an existing task */
-        function addOrUpdateTask() {
-            const taskText = newTaskInput.value.trim();
-            const tagsText = newTaskTagsInput.value.trim();
-
-            if (taskText === '') {
-                showMessage('Task description cannot be empty.', true); return;
-            }
+        function addOrUpdateTask() { /* ... (calls refreshTagUI) ... */
+            const taskText = newTaskInput.value.trim(); const tagsText = newTaskTagsInput.value.trim();
+            if (taskText === '') { showMessage('Task description cannot be empty.', true); return; }
             const tags = tagsText.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
-
             if (editingTaskId) {
-                // --- Update existing task ---
                 const taskCard = document.querySelector(`.task-card[data-task-id="${editingTaskId}"]`);
                 if (taskCard) {
-                    // Update description
-                    const descriptionElement = taskCard.querySelector('.task-description');
-                    if (descriptionElement) descriptionElement.textContent = taskText;
-
-                    // Update tags (remove old, add new)
-                    let tagsContainer = taskCard.querySelector('.tags-container');
-                    if (tagsContainer) {
-                        tagsContainer.remove(); // Remove existing container
-                    }
-                    if (tags.length > 0) {
-                        tagsContainer = document.createElement('div');
-                        tagsContainer.className = 'tags-container';
-                        tags.forEach(tagText => {
-                            const tagBadge = document.createElement('span');
-                            tagBadge.className = 'tag-badge'; tagBadge.textContent = tagText;
-                            tagsContainer.appendChild(tagBadge);
-                        });
-                        // Append new container after description
-                        if (descriptionElement) descriptionElement.insertAdjacentElement('afterend', tagsContainer);
-                        else taskCard.appendChild(tagsContainer); // Fallback if description missing
-                    }
+                    const descriptionElement = taskCard.querySelector('.task-description'); if (descriptionElement) descriptionElement.textContent = taskText;
+                    let tagsContainer = taskCard.querySelector('.tags-container'); if (tagsContainer) { tagsContainer.remove(); }
+                    if (tags.length > 0) { tagsContainer = document.createElement('div'); tagsContainer.className = 'tags-container'; tags.forEach(tagText => { const tagBadge = document.createElement('span'); tagBadge.className = 'tag-badge'; tagBadge.textContent = tagText; tagsContainer.appendChild(tagBadge); }); if (descriptionElement) descriptionElement.insertAdjacentElement('afterend', tagsContainer); else taskCard.appendChild(tagsContainer); }
                     showMessage('Task updated.');
-                } else {
-                    showMessage('Error: Could not find task to update.', true);
-                }
-                cancelEdit(); // Exit edit mode after update
+                } else { showMessage('Error: Could not find task to update.', true); }
+                cancelEdit();
             } else {
-                // --- Add new task ---
-                const taskId = `task-${taskCounter++}`;
-                const newTaskCard = createTaskCard(taskText, taskId, tags);
+                const taskId = `task-${taskCounter++}`; const newTaskCard = createTaskCard(taskText, taskId, tags);
                 document.querySelector('#todo .tasks-container').appendChild(newTaskCard);
-                newTaskInput.value = ''; newTaskTagsInput.value = ''; // Clear inputs only for new tasks
-                showMessage('Task added.');
+                newTaskInput.value = ''; newTaskTagsInput.value = ''; showMessage('Task added.');
             }
-
-            saveTasksToLocalStorage(); // Save changes (add or update)
-            filterTasksByTag(); // Re-apply filter
+            saveTasksToLocalStorage(); // Saves, updates chart, and refreshes tags
+            filterTasksByTag();
         }
-
-        /** Triggers the confetti animation. */
-        function triggerConfetti() { myConfetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } }); }
+        function triggerConfetti() { /* ... (same) ... */ myConfetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } }); }
 
         // --- Drag and Drop Event Handlers ---
         let draggedItem = null; let placeholder = null;
         function createPlaceholder() { const ph = document.createElement('div'); ph.className = 'drop-placeholder'; return ph; }
-        function handleDragStart(event) {
-            // Prevent dragging if the card is being edited
-            if (!event.target.classList.contains('task-card') || event.target.classList.contains('task-hidden') || event.target.classList.contains('editing')) {
-                event.preventDefault(); return;
-            }
-            draggedItem = event.target;
-            event.dataTransfer.setData('text/plain', draggedItem.dataset.taskId); event.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => { if(draggedItem) draggedItem.classList.add('dragging'); }, 0);
-            placeholder = createPlaceholder(); placeholder.style.height = `${draggedItem.offsetHeight}px`;
-        }
-        function handleDragEnd(event) {
-            if (draggedItem) {
-                draggedItem.classList.remove('dragging');
-                saveTasksToLocalStorage(); // Save final state
-            }
-            if (placeholder && placeholder.parentNode) { placeholder.parentNode.removeChild(placeholder); }
-            draggedItem = null; placeholder = null;
-            columns.forEach(col => col.classList.remove('drag-over'));
-        }
-        function handleDragOver(event) { /* ... (same as before) ... */
-             event.preventDefault();
-            const column = event.target.closest('.kanban-column');
-            if (!column || !placeholder || !draggedItem) return;
-            if (!column.classList.contains('drag-over')) { columns.forEach(col => col.classList.remove('drag-over')); column.classList.add('drag-over'); }
-            const tasksContainer = column.querySelector('.tasks-container');
-            const mouseY = event.clientY;
-            const cards = [...tasksContainer.querySelectorAll('.task-card:not(.dragging):not(.task-hidden)')];
-            let nextElement = null;
-            for (const card of cards) { const rect = card.getBoundingClientRect(); if (mouseY < rect.top + rect.height / 2) { nextElement = card; break; } }
-            if (nextElement) { tasksContainer.insertBefore(placeholder, nextElement); } else { tasksContainer.appendChild(placeholder); }
-        }
-        function handleDragLeave(event) { /* ... (same as before) ... */
-             const column = event.target.closest('.kanban-column');
-            if (column && !column.contains(event.relatedTarget) && event.relatedTarget !== placeholder) { column.classList.remove('drag-over'); }
-            if (!event.relatedTarget && placeholder && placeholder.parentNode) { placeholder.parentNode.removeChild(placeholder); }
-        }
-        function handleDrop(event) { /* ... (same as before) ... */
-             event.preventDefault();
-            const column = event.target.closest('.kanban-column');
-            if (!column || !draggedItem) return;
-            const tasksContainer = column.querySelector('.tasks-container');
-            if (placeholder && placeholder.parentNode === tasksContainer) { tasksContainer.replaceChild(draggedItem, placeholder); }
-            else { tasksContainer.appendChild(draggedItem); if (placeholder && placeholder.parentNode) { placeholder.parentNode.removeChild(placeholder); } }
-            draggedItem.classList.remove('task-hidden');
-            if (column.id === 'done') { triggerConfetti(); }
-            placeholder = null; column.classList.remove('drag-over');
-            // Save is handled in handleDragEnd
-        }
+        function handleDragStart(event) { /* ... (same) ... */ if (!event.target.classList.contains('task-card') || event.target.classList.contains('task-hidden') || event.target.classList.contains('editing')) { event.preventDefault(); return; } draggedItem = event.target; event.dataTransfer.setData('text/plain', draggedItem.dataset.taskId); event.dataTransfer.effectAllowed = 'move'; setTimeout(() => { if(draggedItem) draggedItem.classList.add('dragging'); }, 0); placeholder = createPlaceholder(); placeholder.style.height = `${draggedItem.offsetHeight}px`; }
+        function handleDragEnd(event) { /* ... (calls save which updates tags) ... */ if (draggedItem) { draggedItem.classList.remove('dragging'); saveTasksToLocalStorage(); } if (placeholder && placeholder.parentNode) { placeholder.parentNode.removeChild(placeholder); } draggedItem = null; placeholder = null; columns.forEach(col => col.classList.remove('drag-over')); }
+        function handleDragOver(event) { /* ... (same) ... */ event.preventDefault(); const column = event.target.closest('.kanban-column'); if (!column || !placeholder || !draggedItem) return; if (!column.classList.contains('drag-over')) { columns.forEach(col => col.classList.remove('drag-over')); column.classList.add('drag-over'); } const tasksContainer = column.querySelector('.tasks-container'); const mouseY = event.clientY; const cards = [...tasksContainer.querySelectorAll('.task-card:not(.dragging):not(.task-hidden)')]; let nextElement = null; for (const card of cards) { const rect = card.getBoundingClientRect(); if (mouseY < rect.top + rect.height / 2) { nextElement = card; break; } } if (nextElement) { tasksContainer.insertBefore(placeholder, nextElement); } else { tasksContainer.appendChild(placeholder); } }
+        function handleDragLeave(event) { /* ... (same) ... */ const column = event.target.closest('.kanban-column'); if (column && !column.contains(event.relatedTarget) && event.relatedTarget !== placeholder) { column.classList.remove('drag-over'); } if (!event.relatedTarget && placeholder && placeholder.parentNode) { placeholder.parentNode.removeChild(placeholder); } }
+        function handleDrop(event) { /* ... (same) ... */ event.preventDefault(); const column = event.target.closest('.kanban-column'); if (!column || !draggedItem) return; const tasksContainer = column.querySelector('.tasks-container'); if (placeholder && placeholder.parentNode === tasksContainer) { tasksContainer.replaceChild(draggedItem, placeholder); } else { tasksContainer.appendChild(draggedItem); if (placeholder && placeholder.parentNode) { placeholder.parentNode.removeChild(placeholder); } } draggedItem.classList.remove('task-hidden'); if (column.id === 'done') { triggerConfetti(); } placeholder = null; column.classList.remove('drag-over'); /* Save handled in dragEnd */ }
 
         // --- Event Listeners ---
-        addOrUpdateTaskBtn.addEventListener('click', addOrUpdateTask); // Use the combined function
-        cancelEditBtn.addEventListener('click', cancelEdit); // Listener for cancel button
-        newTaskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addOrUpdateTask(); }); // Enter key submits add/update
-        newTaskTagsInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addOrUpdateTask(); }); // Enter key submits add/update
+        addOrUpdateTaskBtn.addEventListener('click', addOrUpdateTask);
+        cancelEditBtn.addEventListener('click', cancelEdit);
+        newTaskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addOrUpdateTask(); });
+        newTaskTagsInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addOrUpdateTask(); });
         clearStorageBtn.addEventListener('click', handleClearStorage);
         exportTasksBtn.addEventListener('click', handleExportTasks);
         importTasksBtn.addEventListener('click', () => importFileInput.click());
         importFileInput.addEventListener('change', handleFileImport);
         filterTagInput.addEventListener('input', filterTasksByTag);
-        columns.forEach(column => {
-            column.addEventListener('dragover', handleDragOver);
-            column.addEventListener('dragleave', handleDragLeave);
-            column.addEventListener('drop', handleDrop);
-        });
-        // Note: Task click listener is added in createTaskCard
+        columns.forEach(column => { column.addEventListener('dragover', handleDragOver); column.addEventListener('dragleave', handleDragLeave); column.addEventListener('drop', handleDrop); });
 
         // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', () => {
-            loadTasksFromLocalStorage();
+            loadTasksFromLocalStorage(); // This now loads tasks and refreshes tag UI
         });
 
     </script>
