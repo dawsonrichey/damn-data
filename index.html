@@ -6,6 +6,7 @@
     <title>Kanban Task Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -32,7 +33,7 @@
             margin-bottom: 0.75rem;
             cursor: grab;
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            transition: box-shadow 0.2s ease-in-out, opacity 0.2s ease-in-out; /* Added opacity transition */
+            transition: box-shadow 0.2s ease-in-out, opacity 0.2s ease-in-out;
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
@@ -47,9 +48,8 @@
         .task-card.dragging {
             opacity: 0.5;
         }
-        /* Class to hide tasks during filtering */
         .task-hidden {
-            display: none !important; /* Use important to override other display styles */
+            display: none !important;
         }
         .drop-placeholder {
             background-color: #9ca3af;
@@ -59,31 +59,18 @@
             opacity: 0.5;
         }
         #confetti-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9999;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;
         }
-        #importFile {
-            display: none;
-        }
-        .tags-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.375rem;
-            margin-top: 0.5rem;
-        }
+        #importFile { display: none; }
+        .tags-container { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.5rem; }
         .tag-badge {
-            background-color: #dbeafe;
-            color: #1e40af;
-            padding: 0.125rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            white-space: nowrap;
+            background-color: #dbeafe; color: #1e40af; padding: 0.125rem 0.5rem; border-radius: 9999px;
+            font-size: 0.75rem; font-weight: 500; white-space: nowrap;
+        }
+        /* Chart container */
+        #storageChartContainer {
+            max-width: 250px; /* Limit chart size */
+            margin: 1rem auto 0; /* Center chart below buttons */
         }
     </style>
 </head>
@@ -117,11 +104,14 @@
                         Upload Tasks (JSON)
                     </button>
                      <input type="file" id="importFile" accept=".json">
-
                      <button id="clearStorageBtn" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out sm:ml-auto">
                         Clear All Tasks
                     </button>
                 </div>
+                 <div id="storageChartContainer">
+                     <h3 class="text-center text-sm font-medium text-gray-600 mb-2">Estimated Local Storage Usage (5MB Limit)</h3>
+                     <canvas id="storageUsageChart"></canvas>
+                 </div>
             </div>
              <div id="messageArea" class="text-sm text-gray-600 min-h-[1.25rem]"></div>
         </div>
@@ -155,15 +145,17 @@
         const importTasksBtn = document.getElementById('importTasksBtn');
         const importFileInput = document.getElementById('importFile');
         const messageArea = document.getElementById('messageArea');
-        const filterTagInput = document.getElementById('filterTagInput'); // Filter input
+        const filterTagInput = document.getElementById('filterTagInput');
         const confettiCanvas = document.getElementById('confetti-canvas');
+        const storageChartCanvas = document.getElementById('storageUsageChart'); // Chart canvas
         const STORAGE_KEY = 'kanbanTasks';
+        const LOCAL_STORAGE_LIMIT_BYTES = 5 * 1024 * 1024; // Estimate 5MB limit
+
+        // --- Chart Instance ---
+        let storageChart = null; // To hold the Chart.js instance
 
         // --- Confetti Instance ---
-        const myConfetti = confetti.create(confettiCanvas, {
-            resize: true,
-            useWorker: true
-        });
+        const myConfetti = confetti.create(confettiCanvas, { resize: true, useWorker: true });
 
         // --- Task Counter ---
         let taskCounter = 1;
@@ -180,38 +172,108 @@
             }, 5000);
         }
 
+        /** Formats bytes into KB or MB */
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
         // --- Filtering Function ---
-        /**
-         * Filters tasks displayed on the board based on the input tag.
-         * Hides tasks that do not contain the filter tag (case-insensitive).
-         * Shows all tasks if the filter tag is empty.
-         */
         function filterTasksByTag() {
             const filterTag = filterTagInput.value.trim().toLowerCase();
             const allTaskCards = document.querySelectorAll('.task-card');
-
             allTaskCards.forEach(card => {
                 let hasTag = false;
-                if (!filterTag) {
-                    // If filter is empty, show all tasks
-                    hasTag = true;
-                } else {
-                    // Check if any tag badge on the card contains the filter tag
+                if (!filterTag) { hasTag = true; }
+                else {
                     const tagBadges = card.querySelectorAll('.tag-badge');
                     tagBadges.forEach(badge => {
-                        if (badge.textContent.toLowerCase().includes(filterTag)) {
-                            hasTag = true;
-                        }
+                        if (badge.textContent.toLowerCase().includes(filterTag)) hasTag = true;
                     });
                 }
-
-                // Show or hide the card based on whether it has the tag
-                if (hasTag) {
-                    card.classList.remove('task-hidden');
-                } else {
-                    card.classList.add('task-hidden');
-                }
+                card.classList.toggle('task-hidden', !hasTag);
             });
+        }
+
+        // --- Chart Functions ---
+
+        /** Calculates estimated localStorage usage */
+        function calculateLocalStorageUsage() {
+            const savedDataString = localStorage.getItem(STORAGE_KEY);
+            let usedBytes = 0;
+            if (savedDataString) {
+                // Estimate byte size using Blob
+                usedBytes = new Blob([savedDataString]).size;
+            }
+            const remainingBytes = Math.max(0, LOCAL_STORAGE_LIMIT_BYTES - usedBytes); // Ensure non-negative
+            return { usedBytes, remainingBytes };
+        }
+
+        /** Initializes or updates the storage usage pie chart */
+        function updateStorageChart() {
+            if (!storageChartCanvas) return; // Don't proceed if canvas doesn't exist
+            const ctx = storageChartCanvas.getContext('2d');
+            const { usedBytes, remainingBytes } = calculateLocalStorageUsage();
+
+            const chartData = {
+                labels: [
+                    `Used: ${formatBytes(usedBytes)}`,
+                    `Est. Remaining: ${formatBytes(remainingBytes)}`
+                ],
+                datasets: [{
+                    label: 'LocalStorage Usage',
+                    data: [usedBytes, remainingBytes],
+                    backgroundColor: [
+                        'rgb(239, 68, 68)', // Red-500 for used
+                        'rgb(34, 197, 94)'  // Green-500 for remaining
+                    ],
+                    hoverOffset: 4
+                }]
+            };
+
+            if (storageChart) {
+                // Update existing chart
+                storageChart.data = chartData;
+                storageChart.update();
+            } else {
+                // Create new chart
+                storageChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true, // Keep aspect ratio
+                        plugins: {
+                            legend: {
+                                position: 'bottom', // Position legend below
+                                labels: {
+                                    boxWidth: 12, // Smaller color boxes
+                                    font: { size: 10 } // Smaller font
+                                }
+                            },
+                            tooltip: {
+                                // Optional: customize tooltips if needed
+                                callbacks: {
+                                     label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            label += formatBytes(context.parsed);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         }
 
 
@@ -232,8 +294,7 @@
                     const taskText = descriptionElement ? descriptionElement.textContent : '';
                     let tags = [];
                     if (tagsContainer) {
-                        tags = Array.from(tagsContainer.querySelectorAll('.tag-badge'))
-                                    .map(badge => badge.textContent);
+                        tags = Array.from(tagsContainer.querySelectorAll('.tag-badge')).map(badge => badge.textContent);
                     }
                     tasksData[columnId].push({ id: taskId, text: taskText, tags: tags });
                     const idNum = parseInt(taskId.split('-')[1]);
@@ -249,6 +310,7 @@
             const tasksData = getCurrentTasksData();
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(tasksData));
+                updateStorageChart(); // Update chart after saving
             } catch (error) {
                 console.error("Error saving tasks to localStorage:", error);
                 showMessage("Could not save tasks. Storage might be full or disabled.", true);
@@ -258,48 +320,43 @@
         /** Loads tasks from localStorage and populates the columns. */
         function loadTasksFromLocalStorage() {
             const savedData = localStorage.getItem(STORAGE_KEY);
-            clearBoardUI(); // Clear first
+            clearBoardUI();
 
             if (!savedData) {
                 console.log("No saved tasks found.");
                 taskCounter = 1;
-                filterTasksByTag(); // Apply filter even if no tasks loaded (clears previous filter state)
-                return;
-            }
-
-            try {
-                const tasksData = JSON.parse(savedData);
-                if (typeof tasksData !== 'object' || tasksData === null || !Array.isArray(tasksData.todo) || !Array.isArray(tasksData.inprogress) || !Array.isArray(tasksData.done)) {
-                    throw new Error("Invalid data structure in localStorage.");
+            } else {
+                try {
+                    const tasksData = JSON.parse(savedData);
+                    if (typeof tasksData !== 'object' || tasksData === null || !Array.isArray(tasksData.todo) || !Array.isArray(tasksData.inprogress) || !Array.isArray(tasksData.done)) {
+                        throw new Error("Invalid data structure in localStorage.");
+                    }
+                    Object.keys(tasksData).forEach(columnId => {
+                        if (columnId === 'nextTaskId') return;
+                        const columnElement = document.getElementById(columnId);
+                        if (columnElement && Array.isArray(tasksData[columnId])) {
+                            const tasksContainer = columnElement.querySelector('.tasks-container');
+                            tasksData[columnId].forEach(task => {
+                                if (task && typeof task.id === 'string' && typeof task.text === 'string' && Array.isArray(task.tags)) {
+                                    const taskCard = createTaskCard(task.text, task.id, task.tags);
+                                    tasksContainer.appendChild(taskCard);
+                                } else { console.warn("Skipping invalid task object:", task); }
+                            });
+                        } else if(columnElement) { console.warn(`Expected array for column ${columnId}, but found:`, tasksData[columnId]); }
+                    });
+                    taskCounter = parseInt(tasksData.nextTaskId) || 1;
+                    if (taskCounter < 1) taskCounter = 1;
+                } catch (error) {
+                    console.error("Error loading or parsing tasks from localStorage:", error);
+                    showMessage("Could not load saved tasks. Data might be corrupted. Clearing storage.", true);
+                    localStorage.removeItem(STORAGE_KEY);
+                    taskCounter = 1;
+                    clearBoardUI();
                 }
-
-                Object.keys(tasksData).forEach(columnId => {
-                    if (columnId === 'nextTaskId') return;
-                    const columnElement = document.getElementById(columnId);
-                    if (columnElement && Array.isArray(tasksData[columnId])) {
-                        const tasksContainer = columnElement.querySelector('.tasks-container');
-                        tasksData[columnId].forEach(task => {
-                            if (task && typeof task.id === 'string' && typeof task.text === 'string' && Array.isArray(task.tags)) {
-                                const taskCard = createTaskCard(task.text, task.id, task.tags);
-                                tasksContainer.appendChild(taskCard);
-                            } else { console.warn("Skipping invalid task object:", task); }
-                        });
-                    } else if(columnElement) { console.warn(`Expected array for column ${columnId}, but found:`, tasksData[columnId]); }
-                });
-
-                taskCounter = parseInt(tasksData.nextTaskId) || 1;
-                if (taskCounter < 1) taskCounter = 1;
-
-                filterTasksByTag(); // Apply current filter after loading tasks
-
-            } catch (error) {
-                console.error("Error loading or parsing tasks from localStorage:", error);
-                showMessage("Could not load saved tasks. Data might be corrupted. Clearing storage.", true);
-                localStorage.removeItem(STORAGE_KEY);
-                taskCounter = 1;
-                clearBoardUI();
-                filterTasksByTag(); // Apply filter after clearing potentially corrupted data
             }
+             // Update chart and apply filter regardless of whether data was loaded
+            updateStorageChart();
+            filterTasksByTag();
         }
 
         /** Clears all tasks from the board UI. */
@@ -316,8 +373,9 @@
                     localStorage.removeItem(STORAGE_KEY);
                     clearBoardUI();
                     taskCounter = 1;
-                    filterTagInput.value = ''; // Clear filter input as well
-                    filterTasksByTag(); // Update display
+                    filterTagInput.value = '';
+                    filterTasksByTag();
+                    updateStorageChart(); // Update chart after clearing
                     showMessage("All tasks cleared successfully.");
                     console.log("Tasks cleared from localStorage and board.");
                 } catch (error) {
@@ -360,21 +418,19 @@
                 try {
                     const fileContent = e.target.result;
                     const importedData = JSON.parse(fileContent);
-                    // Validation
-                    if (typeof importedData !== 'object' || importedData === null || !Array.isArray(importedData.todo) || !Array.isArray(importedData.inprogress) || !Array.isArray(importedData.done) || typeof importedData.nextTaskId !== 'number' || importedData.nextTaskId < 1) {
-                        throw new Error("Invalid JSON structure for Kanban tasks.");
-                    }
+                    // Validation... (same as before)
+                    if (typeof importedData !== 'object' || importedData === null || !Array.isArray(importedData.todo) || !Array.isArray(importedData.inprogress) || !Array.isArray(importedData.done) || typeof importedData.nextTaskId !== 'number' || importedData.nextTaskId < 1) { throw new Error("Invalid JSON structure for Kanban tasks."); }
                     const allTasksValid = ['todo', 'inprogress', 'done'].every(col => importedData[col].every(task => task && typeof task.id === 'string' && typeof task.text === 'string' && Array.isArray(task.tags)));
                     if (!allTasksValid) { throw new Error("Invalid task format within the JSON file."); }
 
                     // If validation passes:
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(importedData));
-                    loadTasksFromLocalStorage(); // Reload board (this will also apply filter)
+                    loadTasksFromLocalStorage(); // Reload board (this will also update chart and apply filter)
                     showMessage("Tasks imported successfully!");
                 } catch (error) {
                     console.error("Error processing imported file:", error);
                     showMessage(`Failed to import tasks: ${error.message}`, true);
-                } finally { event.target.value = null; } // Reset file input
+                } finally { event.target.value = null; }
             };
             reader.onerror = function(e) {
                 console.error("Error reading file:", e);
@@ -390,30 +446,23 @@
         function createTaskCard(text, id, tags = []) {
             const card = document.createElement('div');
             card.className = 'task-card';
-            card.setAttribute('draggable', 'true');
-            card.setAttribute('data-task-id', id);
-
+            card.setAttribute('draggable', 'true'); card.setAttribute('data-task-id', id);
             const description = document.createElement('div');
-            description.className = 'task-description';
-            description.textContent = text;
+            description.className = 'task-description'; description.textContent = text;
             card.appendChild(description);
-
             if (tags && tags.length > 0) {
                 const tagsContainer = document.createElement('div');
                 tagsContainer.className = 'tags-container';
                 tags.forEach(tagText => {
                     if (tagText.trim()) {
                         const tagBadge = document.createElement('span');
-                        tagBadge.className = 'tag-badge';
-                        tagBadge.textContent = tagText.trim();
+                        tagBadge.className = 'tag-badge'; tagBadge.textContent = tagText.trim();
                         tagsContainer.appendChild(tagBadge);
                     }
                 });
                 if (tagsContainer.hasChildNodes()) card.appendChild(tagsContainer);
             }
-
-            card.addEventListener('dragstart', handleDragStart);
-            card.addEventListener('dragend', handleDragEnd);
+            card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd);
             return card;
         }
 
@@ -421,139 +470,70 @@
         function addTask() {
             const taskText = newTaskInput.value.trim();
             const tagsText = newTaskTagsInput.value.trim();
-            if (taskText === '') {
-                showMessage('Task description cannot be empty.', true); return;
-            }
+            if (taskText === '') { showMessage('Task description cannot be empty.', true); return; }
             const tags = tagsText.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
             const taskId = `task-${taskCounter++}`;
             const newTaskCard = createTaskCard(taskText, taskId, tags);
             document.querySelector('#todo .tasks-container').appendChild(newTaskCard);
             newTaskInput.value = ''; newTaskTagsInput.value = '';
-            saveTasksToLocalStorage();
-            filterTasksByTag(); // Apply filter after adding task
+            saveTasksToLocalStorage(); // This now also updates the chart
+            filterTasksByTag();
             showMessage('Task added.');
         }
 
         /** Triggers the confetti animation. */
-        function triggerConfetti() {
-            myConfetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
-        }
+        function triggerConfetti() { myConfetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } }); }
 
         // --- Drag and Drop Event Handlers ---
-
-        let draggedItem = null;
-        let placeholder = null;
-
-        function createPlaceholder() {
-            const ph = document.createElement('div');
-            ph.className = 'drop-placeholder';
-            return ph;
-        }
-
+        let draggedItem = null; let placeholder = null;
+        function createPlaceholder() { const ph = document.createElement('div'); ph.className = 'drop-placeholder'; return ph; }
         function handleDragStart(event) {
-            // Ensure we are dragging a task card that isn't hidden by the filter
-            if (!event.target.classList.contains('task-card') || event.target.classList.contains('task-hidden')) {
-                event.preventDefault(); // Prevent dragging hidden items
-                return;
-            }
+            if (!event.target.classList.contains('task-card') || event.target.classList.contains('task-hidden')) { event.preventDefault(); return; }
             draggedItem = event.target;
-            event.dataTransfer.setData('text/plain', draggedItem.dataset.taskId);
-            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', draggedItem.dataset.taskId); event.dataTransfer.effectAllowed = 'move';
             setTimeout(() => { if(draggedItem) draggedItem.classList.add('dragging'); }, 0);
-            placeholder = createPlaceholder();
-            placeholder.style.height = `${draggedItem.offsetHeight}px`;
+            placeholder = createPlaceholder(); placeholder.style.height = `${draggedItem.offsetHeight}px`;
         }
-
         function handleDragEnd(event) {
             if (draggedItem) {
                 draggedItem.classList.remove('dragging');
-                 saveTasksToLocalStorage(); // Save the final state
+                saveTasksToLocalStorage(); // Save final state (also updates chart)
             }
-            if (placeholder && placeholder.parentNode) {
-                placeholder.parentNode.removeChild(placeholder);
-            }
-            draggedItem = null;
-            placeholder = null;
+            if (placeholder && placeholder.parentNode) { placeholder.parentNode.removeChild(placeholder); }
+            draggedItem = null; placeholder = null;
             columns.forEach(col => col.classList.remove('drag-over'));
         }
-
         function handleDragOver(event) {
             event.preventDefault();
             const column = event.target.closest('.kanban-column');
-            // Only allow dropping if an item is being dragged and a placeholder exists
             if (!column || !placeholder || !draggedItem) return;
-
-             if (!column.classList.contains('drag-over')) {
-                columns.forEach(col => col.classList.remove('drag-over'));
-                column.classList.add('drag-over');
-             }
-
+            if (!column.classList.contains('drag-over')) { columns.forEach(col => col.classList.remove('drag-over')); column.classList.add('drag-over'); }
             const tasksContainer = column.querySelector('.tasks-container');
             const mouseY = event.clientY;
-            // Important: Get only visible cards for positioning the placeholder
             const cards = [...tasksContainer.querySelectorAll('.task-card:not(.dragging):not(.task-hidden)')];
-
             let nextElement = null;
-            for (const card of cards) {
-                const rect = card.getBoundingClientRect();
-                if (mouseY < rect.top + rect.height / 2) {
-                    nextElement = card;
-                    break;
-                }
-            }
-
-             if (nextElement) {
-                 tasksContainer.insertBefore(placeholder, nextElement);
-             } else {
-                 // Append to the end if no card is below the cursor,
-                 // or if the column is empty / all cards are hidden
-                 tasksContainer.appendChild(placeholder);
-             }
+            for (const card of cards) { const rect = card.getBoundingClientRect(); if (mouseY < rect.top + rect.height / 2) { nextElement = card; break; } }
+            if (nextElement) { tasksContainer.insertBefore(placeholder, nextElement); } else { tasksContainer.appendChild(placeholder); }
         }
-
         function handleDragLeave(event) {
             const column = event.target.closest('.kanban-column');
-            if (column && !column.contains(event.relatedTarget) && event.relatedTarget !== placeholder) {
-                 column.classList.remove('drag-over');
-            }
-             if (!event.relatedTarget && placeholder && placeholder.parentNode) {
-                 placeholder.parentNode.removeChild(placeholder);
-            }
+            if (column && !column.contains(event.relatedTarget) && event.relatedTarget !== placeholder) { column.classList.remove('drag-over'); }
+            if (!event.relatedTarget && placeholder && placeholder.parentNode) { placeholder.parentNode.removeChild(placeholder); }
         }
-
         function handleDrop(event) {
             event.preventDefault();
             const column = event.target.closest('.kanban-column');
-            if (!column || !draggedItem) return; // Need column and dragged item
-
+            if (!column || !draggedItem) return;
             const tasksContainer = column.querySelector('.tasks-container');
-
-            // Replace placeholder with the actual item
-            if (placeholder && placeholder.parentNode === tasksContainer) {
-                tasksContainer.replaceChild(draggedItem, placeholder);
-            } else {
-                 // Fallback: If placeholder isn't where expected, just append
-                 tasksContainer.appendChild(draggedItem);
-                 if (placeholder && placeholder.parentNode) {
-                     placeholder.parentNode.removeChild(placeholder); // Clean up stray placeholder
-                 }
-            }
-
-             // Make sure the dropped item is visible (remove hidden class if it had one)
-             draggedItem.classList.remove('task-hidden');
-
-
-            if (column.id === 'done') {
-                triggerConfetti();
-            }
-
-            placeholder = null; // Reset placeholder
-            column.classList.remove('drag-over');
+            if (placeholder && placeholder.parentNode === tasksContainer) { tasksContainer.replaceChild(draggedItem, placeholder); }
+            else { tasksContainer.appendChild(draggedItem); if (placeholder && placeholder.parentNode) { placeholder.parentNode.removeChild(placeholder); } }
+            draggedItem.classList.remove('task-hidden');
+            if (column.id === 'done') { triggerConfetti(); }
+            placeholder = null; column.classList.remove('drag-over');
             // Save is handled in handleDragEnd
         }
 
         // --- Event Listeners ---
-
         addTaskBtn.addEventListener('click', addTask);
         newTaskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
         newTaskTagsInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
@@ -561,10 +541,7 @@
         exportTasksBtn.addEventListener('click', handleExportTasks);
         importTasksBtn.addEventListener('click', () => importFileInput.click());
         importFileInput.addEventListener('change', handleFileImport);
-
-        // Filter listener
-        filterTagInput.addEventListener('input', filterTasksByTag);
-
+        filterTagInput.addEventListener('input', filterTasksByTag); // Filter listener
         columns.forEach(column => {
             column.addEventListener('dragover', handleDragOver);
             column.addEventListener('dragleave', handleDragLeave);
@@ -572,7 +549,10 @@
         });
 
         // --- Initial Load ---
-        document.addEventListener('DOMContentLoaded', loadTasksFromLocalStorage);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTasksFromLocalStorage(); // Load tasks first
+            // updateStorageChart(); // Initial chart draw - Now called within loadTasksFromLocalStorage
+        });
 
     </script>
 
